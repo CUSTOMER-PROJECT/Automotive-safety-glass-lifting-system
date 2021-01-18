@@ -13,8 +13,8 @@
 #define CT_TU_DONG_XUONG      13
 #define BIEN_TRO              A0
 /* Định nghĩa macro */
-#define BAT   1
-#define TAT   0
+#define BAT   true
+#define TAT   false
 #define LEN   1
 #define XUONG 0
 #define OUT   OUTPUT
@@ -24,7 +24,7 @@
 
 /* Biến toàn cục */
 int TOCDO = 0;
-
+volatile bool CoBaoTrangThaiKinh = false; // Cờ báo trạng thái kính 
 /* Các hàm chức năng (tổng quát)*/
 bool Nhan_Nut_Len();        // Nhấn nút kính lên
 bool Nhan_Nut_Xuong();      // Nhấn nút kính xuống
@@ -40,7 +40,7 @@ void Dieu_Khien_Kinh_Len(); // Điều khiển kính lên
 void Dieu_Khien_Kinh_Xuong(); // Điều khiển kính xuống
 void Dieu_Khien_Kinh_Len_Tu_Dong(); // Điều khiển kính tự động lên
 void Dieu_Khien_Kinh_Xuong_Tu_Dong(); // Điều khiển kính tự động xuống
-void Bat_Tat_Buzzer(int TrangThai);      // Phát chuông cảnh báo khi phát hiện vật thể - Cảnh báo
+void Bat_Tat_Buzzer(bool TrangThai);      // Phát chuông cảnh báo khi phát hiện vật thể - Cảnh báo
 void Che_Do_An_Toan();  // Chế độ an toàn
 /*----------------------------------------------------*/
 /* Chương trình chính*/
@@ -56,18 +56,21 @@ void setup() {
   pinMode(DONG_CO_PWM, OUT);
   pinMode(CAM_BIEN_HONG_NGOAI, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(CAM_BIEN_HONG_NGOAI), Che_Do_An_Toan, CHANGE);
+  Dieu_Khien_DC_Dung();
 }
 
 void loop() {
-  TOCDO = Chinh_Toc_Do_DC(digitalRead(BIEN_TRO));
+  TOCDO = Chinh_Toc_Do_DC(analogRead(BIEN_TRO));
   
   while (Nhan_Nut_Len() == true)
   {
     if (Phat_Hien_Cham_Tren() == true)
     {
+      Serial.println("Phat hien cham tren");
       Dieu_Khien_DC_Dung();
       break;
     }
+    Serial.println("Kinh dang len");
     Dieu_Khien_Kinh_Len();
   }
   
@@ -76,22 +79,25 @@ void loop() {
     if (Phat_Hien_Cham_Duoi() == true)
     {
       Dieu_Khien_DC_Dung();
+      Serial.println("Phat hien cham duoi");
       break;
     }
+    Serial.println("Kinh dang xuong");
     Dieu_Khien_Kinh_Xuong();
   }
 
-  while (Che_Do_Tu_Dong_Len() == true)
+  if (Che_Do_Tu_Dong_Len() == true)
   {
     Dieu_Khien_Kinh_Len_Tu_Dong();
   }
 
-  while (Che_Do_Tu_Dong_Xuong() == true)
+  if (Che_Do_Tu_Dong_Xuong() == true)
   {
     Dieu_Khien_Kinh_Xuong_Tu_Dong();
   }
-  
-  delay(10);
+
+  Dieu_Khien_DC_Dung();
+  CoBaoTrangThaiKinh = false;
 }
 /*----------------------------------------------------*/
 
@@ -146,17 +152,21 @@ void Dieu_Khien_Kinh_Len()
   analogWrite(DONG_CO_PWM, TOCDO);
   digitalWrite(DONG_CO_IN1, HIGH);
   digitalWrite(DONG_CO_IN2, LOW);
+  CoBaoTrangThaiKinh = true;
 }
 void Dieu_Khien_Kinh_Xuong()
 {
   analogWrite(DONG_CO_PWM, TOCDO);
   digitalWrite(DONG_CO_IN1, LOW);
   digitalWrite(DONG_CO_IN2, HIGH);
+  CoBaoTrangThaiKinh = true;
 }
 void Dieu_Khien_Kinh_Len_Tu_Dong()
 {
   while(Phat_Hien_Cham_Tren() == false)
   {
+    if (Che_Do_Tu_Dong_Len() == false)
+      break;
     Dieu_Khien_Kinh_Len();
   }
 }
@@ -164,30 +174,41 @@ void Dieu_Khien_Kinh_Xuong_Tu_Dong()
 {
   while(Phat_Hien_Cham_Duoi() == false)
   {
+    if (Che_Do_Tu_Dong_Xuong() == false)
+      break;
     Dieu_Khien_Kinh_Xuong();
   } 
 }
-void Bat_Tat_Buzzer(int TrangThai)
+void Bat_Tat_Buzzer(bool TrangThai)
 {
   if (TrangThai == BAT)
   {
-    int randFreq = random(100, 500);
-    tone(BUZZER, randFreq);
+      digitalWrite(BUZZER, HIGH);
   }
   else
   {
-    noTone(BUZZER);
+    digitalWrite(BUZZER, LOW);
   }
 }
 void Che_Do_An_Toan()
 {
-  Dieu_Khien_DC_Dung();
-  while (Phat_Hien_Vat_The() == true)
+  if (CoBaoTrangThaiKinh == true)
   {
-    Bat_Tat_Buzzer(BAT);
-    delay(100);
+    Dieu_Khien_DC_Dung();
+    while (Phat_Hien_Vat_The() == true)
+    {
+      Serial.println("Phat hien vat the");
+      Bat_Tat_Buzzer(BAT);
+    }
+    Serial.println("Khong phat hien vat the");
+    Bat_Tat_Buzzer(TAT);
   }
-  Bat_Tat_Buzzer(TAT);
+  else
+  {
+    Serial.println("Khong phat hien vat the");
+    Bat_Tat_Buzzer(TAT);
+  }
+//  return loop();
 }
 
 /* KẾT THÚC - CHÚC CÁC BẠN BẢO VỆ ĐỒ ÁN THÀNH CÔNG */
