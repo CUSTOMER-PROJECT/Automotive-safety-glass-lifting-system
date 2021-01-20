@@ -9,6 +9,7 @@
 #define DONG_CO_IN1           8
 #define DONG_CO_IN2           9
 #define DONG_CO_PWM           10
+#define LED                   11
 #define CT_TU_DONG_LEN        12
 #define CT_TU_DONG_XUONG      13
 #define BIEN_TRO              A0
@@ -24,7 +25,7 @@
 
 /* Biến toàn cục */
 int TOCDO = 0;
-volatile bool CoBaoTrangThaiKinh = false; // Cờ báo trạng thái kính 
+volatile bool CoBaoTrangThaiKinh = false; // Cờ báo trạng thái kính
 /* Các hàm chức năng (tổng quát)*/
 bool Nhan_Nut_Len();        // Nhấn nút kính lên
 bool Nhan_Nut_Xuong();      // Nhấn nút kính xuống
@@ -54,6 +55,7 @@ void setup() {
   pinMode(DONG_CO_IN1, OUT);
   pinMode(DONG_CO_IN2, OUT);
   pinMode(DONG_CO_PWM, OUT);
+  pinMode(LED, OUT);
   pinMode(CAM_BIEN_HONG_NGOAI, INPUT_PULLUP);
   attachInterrupt(digitalPinToInterrupt(CAM_BIEN_HONG_NGOAI), Che_Do_An_Toan, CHANGE);
   Dieu_Khien_DC_Dung();
@@ -67,6 +69,7 @@ void loop() {
     if (Phat_Hien_Cham_Tren() == true)
     {
       Serial.println("Phat hien cham tren");
+      digitalWrite(LED, HIGH);
       Dieu_Khien_DC_Dung();
       break;
     }
@@ -79,6 +82,7 @@ void loop() {
     if (Phat_Hien_Cham_Duoi() == true)
     {
       Dieu_Khien_DC_Dung();
+      digitalWrite(LED, HIGH);
       Serial.println("Phat hien cham duoi");
       break;
     }
@@ -152,6 +156,7 @@ void Dieu_Khien_Kinh_Len()
   analogWrite(DONG_CO_PWM, TOCDO);
   digitalWrite(DONG_CO_IN1, HIGH);
   digitalWrite(DONG_CO_IN2, LOW);
+  digitalWrite(LED, LOW);
   CoBaoTrangThaiKinh = true;
 }
 void Dieu_Khien_Kinh_Xuong()
@@ -159,7 +164,8 @@ void Dieu_Khien_Kinh_Xuong()
   analogWrite(DONG_CO_PWM, TOCDO);
   digitalWrite(DONG_CO_IN1, LOW);
   digitalWrite(DONG_CO_IN2, HIGH);
-  CoBaoTrangThaiKinh = true;
+  digitalWrite(LED, LOW);
+  CoBaoTrangThaiKinh = false;
 }
 void Dieu_Khien_Kinh_Len_Tu_Dong()
 {
@@ -168,7 +174,10 @@ void Dieu_Khien_Kinh_Len_Tu_Dong()
     if (Che_Do_Tu_Dong_Len() == false)
       break;
     Dieu_Khien_Kinh_Len();
+    digitalWrite(LED, LOW);
+    Serial.println("Tu dong len");
   }
+      digitalWrite(LED, HIGH);
 }
 void Dieu_Khien_Kinh_Xuong_Tu_Dong()
 {
@@ -177,7 +186,10 @@ void Dieu_Khien_Kinh_Xuong_Tu_Dong()
     if (Che_Do_Tu_Dong_Xuong() == false)
       break;
     Dieu_Khien_Kinh_Xuong();
+    digitalWrite(LED, LOW);
+    Serial.println("Tu dong xuong");
   } 
+    digitalWrite(LED, HIGH);
 }
 void Bat_Tat_Buzzer(bool TrangThai)
 {
